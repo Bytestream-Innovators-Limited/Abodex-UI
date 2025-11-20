@@ -96,7 +96,7 @@ export function ResendVerificationForm({
 			>
 				<FieldGroup className="w-full">
 					<div className="flex flex-col items-center gap-2 text-center">
-						<a
+						<Link
 							href="/"
 							className="flex flex-col items-center gap-2 font-medium"
 						>
@@ -104,7 +104,7 @@ export function ResendVerificationForm({
 								<Logo />
 							</div>
 							<span className="sr-only">{config.TITLE}.</span>
-						</a>
+						</Link>
 						<h1 className="text-xl font-bold">
 							Resend Verification Email
 						</h1>

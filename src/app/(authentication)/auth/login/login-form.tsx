@@ -191,6 +191,10 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
 					{
 						onSuccess() {
 							refetch()
+							toast.success("Authentication Successful", {
+								description:
+									"You have successfully logged into your account with passkey.",
+							})
 							// Redirect to dashboard after successful authentication
 							router.push("/dashboard")
 						},

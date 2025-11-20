@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import {
@@ -30,6 +31,7 @@ interface ResponsiveModalProps {
 	description?: string
 	children: React.ReactNode
 	footer?: React.ReactNode
+	formResolver?: any
 	className?: string
 	size?: "sm" | "md" | "lg" | "xl"
 }
@@ -43,6 +45,7 @@ export function ResponsiveModal({
 	children,
 	footer,
 	className,
+	formResolver,
 	size = "md",
 }: ResponsiveModalProps) {
 	const isMobile = useIsMobile()
@@ -59,12 +62,20 @@ export function ResponsiveModal({
 			<>
 				<Dialog
 					open={open}
-					onOpenChange={onOpenChange}
+					onOpenChange={() => {
+						if (formResolver) formResolver.reset()
+						onOpenChange(!open)
+					}}
 				>
 					{trigger && (
 						<DialogTrigger asChild>{trigger}</DialogTrigger>
 					)}
-					<DialogContent className={cn(`max-h-[80vh] overflow-y-auto ${sizeClasses[size]}`, className)}>
+					<DialogContent
+						className={cn(
+							`max-h-[80vh] overflow-y-auto ${sizeClasses[size]}`,
+							className
+						)}
+					>
 						<DialogHeader>
 							<DialogTitle>{title}</DialogTitle>
 							{description && (

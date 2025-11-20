@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/lib/auth"; // path to your auth file
 import { toNextJsHandler } from "better-auth/next-js";
 import arcjet, {
@@ -39,11 +40,50 @@ const emailSettings = {
     block: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
 } satisfies EmailOptions
 
+// Create separate instances for different protection levels
+const baseAj = arcjet({
+    key: config.ARCJET_API_KEY!,
+    characteristics: ["userIdOrIp"],
+    rules: [shield({ mode: "LIVE" })],
+})
+
+const signupAj = arcjet({
+    key: config.ARCJET_API_KEY!,
+    characteristics: ["userIdOrIp"],
+    rules: [
+        shield({ mode: "LIVE" }),
+        protectSignup({
+            email: emailSettings,
+            bots: botSettings,
+            rateLimit: restrictiveRateLimitSettings,
+        })
+    ],
+})
+
+const restrictiveAj = arcjet({
+    key: config.ARCJET_API_KEY!,
+    characteristics: ["userIdOrIp"],
+    rules: [
+        shield({ mode: "LIVE" }),
+        detectBot(botSettings),
+        slidingWindow(restrictiveRateLimitSettings),
+    ],
+})
+
+const laxAj = arcjet({
+    key: config.ARCJET_API_KEY!,
+    characteristics: ["userIdOrIp"],
+    rules: [
+        shield({ mode: "LIVE" }),
+        detectBot(botSettings),
+        slidingWindow(laxRateLimitSettings),
+    ],
+})
+
 const authHandlers = toNextJsHandler(auth)
 export const { GET } = authHandlers
 
 export async function POST(request: Request) {
-    const clonedRequest = request.clone()
     const decision = await checkArcjet(request)
 
     if (decision.isDenied()) {
@@ -68,11 +108,31 @@ export async function POST(request: Request) {
         }
     }
 
-    return authHandlers.POST(clonedRequest)
+    return authHandlers.POST(request)
 }
 
 async function checkArcjet(request: Request) {
-    const body = (await request.json()) as unknown
+    // 1. CLONE the request before reading the body.
+    // This leaves the original request stream intact for the auth handler later.
+    const clonedRequest = request.clone();
+
+    // Parse body safely with error handling
+    let bdy: unknown = null;
+
+    try {
+        // 2. Read the body from the CLONED request.
+        const text = await clonedRequest.text();
+        if (text) {
+            bdy = JSON.parse(text);
+        }
+    } catch (error) {
+        // If JSON parsing fails, continue with null body
+        console.error("JSON parsing error:", error);
+    }
+    console.log("Body Message", bdy)
+
+    const body = bdy
+
     const session = await auth.api.getSession({ headers: request.headers })
     const userIdOrIp = (session?.user.id ?? findIp(request)) || "127.0.0.1"
 
@@ -81,27 +141,16 @@ async function checkArcjet(request: Request) {
             body &&
             typeof body === "object" &&
             "email" in body &&
-            typeof body.email === "string"
+            typeof (body as any).email === "string"
         ) {
-            return aj
-                .withRule(
-                    protectSignup({
-                        email: emailSettings,
-                        bots: botSettings,
-                        rateLimit: restrictiveRateLimitSettings,
-                    })
-                )
-                .protect(request, { email: body.email, userIdOrIp })
+            return signupAj.protect(request, {
+                email: (body as any).email,
+                userIdOrIp
+            })
         } else {
-            return aj
-                .withRule(detectBot(botSettings))
-                .withRule(slidingWindow(restrictiveRateLimitSettings))
-                .protect(request, { userIdOrIp })
+            return restrictiveAj.protect(request, { userIdOrIp })
         }
     }
 
-    return aj
-        .withRule(detectBot(botSettings))
-        .withRule(slidingWindow(laxRateLimitSettings))
-        .protect(request, { userIdOrIp })
+    return laxAj.protect(request, { userIdOrIp })
 }

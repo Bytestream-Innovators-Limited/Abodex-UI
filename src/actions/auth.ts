@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server"
 
 import db from "@/db/index"
 import { user, wallet } from "@/db/models"
+import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { v4 as uuid4 } from "uuid"
 /**
@@ -62,5 +64,29 @@ export async function createWallet({
     } catch (error) {
         console.error("Error creataing wallet:", error);
         return { status: false, data: false, error: "Failed to create a wallet for user" };
+    }
+}
+
+export async function viewBackupCodes({ userId }: { userId: string }) {
+
+    try {
+        // Assume users table is defined in schemas with an email column
+        const data = await auth.api.viewBackupCodes({
+            body: {
+                userId
+            }
+        })
+
+        if (!data.status) {
+            return {
+                status: false,
+                data: null,
+                error: "There was an error retreiving backup codes"
+            }
+        }
+        return { status: true, data: data.backupCodes };
+    } catch (error: any) {
+        console.error("Error adding new member into the organization:", error);
+        return { status: false, data: null, error: error.message || "Failed to create this organization" };
     }
 }
