@@ -50,7 +50,7 @@ export default function Header() {
 	}
 
 	return (
-		<header className="fixed z-50 w-screen h-screen md:h-fit max-w-screen p-4">
+		<header className="fixed z-50 w-screen h-fit max-w-screen p-4 top-0 left-0">
 			<div className="w-full backdrop-blur-md relative p-2 z-50 bg-background/80 container mx-auto flex items-center justify-between rounded-md">
 				<Link href={"/"}>
 					<LogoSlant />
